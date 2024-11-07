@@ -6,7 +6,10 @@ const mongoose = require("mongoose");
 const productRoute = require("./api/routes/products");
 const orderRoute = require("./api/routes/orders");
 const userRoute = require("./api/routes/users");
-const dotenv = require("dotenv").config();
+const dotenv = require("dotenv");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const session = require("express-session");
 
 dotenv.config();
 
@@ -20,6 +23,61 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 mongoose.Promise = global.Promise;
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/callback",
+    },
+    (accessToken, refreshToken, profile, done) => {
+      return done(null, profile);
+    }
+  )
+);
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+app.get("/", (req, res) => {
+  res.send("<a href='/auth/google'>Login with Google</a>");
+});
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/" }),
+  (req, res) => {
+    res.redirect("/profile");
+  }
+);
+
+app.get("/profile", (req, res) => {
+  res.send(`Welcome ${req.user.displayName}`);
+});
+
+app.get("/logout", (req, res) => {
+  req.logout(() => {
+    res.redirect("/");
+  });
+});
 
 app.use(morgan("dev")); // morgan logs the API response
 app.use(express.static("/uploads"));
