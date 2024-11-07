@@ -3,10 +3,12 @@ const app = express();
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-
 const productRoute = require("./api/routes/products");
 const orderRoute = require("./api/routes/orders");
 const userRoute = require("./api/routes/users");
+const dotenv = require("dotenv").config();
+
+dotenv.config();
 
 // connect to mongo DB
 mongoose
